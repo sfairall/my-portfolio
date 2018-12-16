@@ -8,5 +8,6 @@ artifacts:
   files:
     - index.html
     - favicon.ico
+    - "Simon Fairall Resume.pdf"
     - styles/*
     - images/*

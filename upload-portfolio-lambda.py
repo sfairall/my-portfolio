@@ -8,18 +8,26 @@ def lambda_handler(event, context):
     sns = boto3.resource('sns');
     topic = sns.Topic('arn:aws:sns:ap-southeast-2:631496266623:DeployPortfolioTopic')
 
+    print "Event Data: " + str(event)
+
     try:
         location = {
             "bucketName": 'fairall-lab-bucket',
-            "objectKey": 'portfoliobuild.zip'
+            "objectKey": 'portfoliobuild.zi'
         }
 
         job = event.get("CodePipeline.job")
 
         if job:
+            print "Codepipeline Job Event data received"
             for artifact in job["data"]["inputArtifacts"]:
-                if (artifact["name"] == "MyAppBuild"):
-                    location = artifact["location"]["s3location"]
+                print "Job Name: " + str(artifact["name"])
+                if (artifact["name"] == "BuildArtifact"):
+                    location = artifact["location"]["s3Location"]
+        else:
+            print "Codepipeline Job Event data missing"
+
+        print "Building Portfolio from " + str(location)
 
         s3 = boto3.resource('s3', config=Config(signature_version='s3v4'))
 
@@ -38,10 +46,15 @@ def lambda_handler(event, context):
 
         topic.publish(Subject="Portfolio Deployed", Message="The portfolio has been deployed successfully.")
         if job:
+            print "Codepipeline build succeeded for " + str(job["id"])
             codepipeline = boto3.client('codepipeline')
-            codepipeline.put_job_success_result(JobId=job["id"])
+            codepipeline.put_job_success_result(jobId=job["id"])
     except:
         topic.publish(Subject="Portfolio NOT Deployed", Message="The portfolio has NOT been deployed successfully.")
+        if job:
+            print "Codepipeline build failed for " + str(job["id"])
+            codepipeline = boto3.client('codepipeline')
+            codepipeline.put_job_failure_result(jobId=job["id"])
         raise
 
     return "Portfolio Deployed!"
